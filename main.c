@@ -40,9 +40,10 @@ long double produce_item(int number) {
 
 /***
  * The producer function
+ * @param dummy dummy parameter
  * @return NULL
  */
-void *producer() {
+void *producer(void *dummy) {
     int buffer_index = 0;
     printf("Producer thread started\n");
 
@@ -72,9 +73,10 @@ void *producer() {
 
 /***
  * The consumer function
+ * @param dummy dummy parameter
  * @return NULL
  */
-void *consumer() {
+void *consumer(void *dummy) {
     int buffer_index = 0;
     printf("Consumer thread started\n");
 
