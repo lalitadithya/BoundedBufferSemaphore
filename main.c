@@ -20,9 +20,14 @@
 long double *buffer;
 
 /***
- * The required semaphores
+ * The required counting semaphores
  */
-sem_t mutex_semaphore, empty_semaphore, full_semaphore;
+sem_t empty_semaphore, full_semaphore;
+
+/***
+ * The required mutex lock
+ */
+pthread_mutex_t lock;
 
 /**
  * Method to simulate a long running process synomous to "prodcing" an item
@@ -49,14 +54,14 @@ void *producer() {
         sem_wait(&empty_semaphore);
 
         // acquire the lock
-        sem_wait(&mutex_semaphore);
+        pthread_mutex_lock(&lock);
 
         buffer[buffer_index] = item;
         printf("Produced %d\n", buffer_index);
         buffer_index = (buffer_index + 1);
 
         // release the lock
-        sem_post(&mutex_semaphore);
+        pthread_mutex_unlock(&lock);
 
         // increment the full semaphore
         sem_post(&full_semaphore);
@@ -78,13 +83,13 @@ void *consumer() {
         sem_wait(&full_semaphore);
 
         // acquire the lock
-        sem_wait(&mutex_semaphore);
+        pthread_mutex_lock(&lock);
 
         printf("Consumed %d\n", buffer_index);
         buffer_index = (buffer_index + 1);
 
         // release the lock
-        sem_post(&mutex_semaphore);
+        pthread_mutex_unlock(&lock);
 
         // increment the empty semaphore
         sem_post(&empty_semaphore);
@@ -109,22 +114,25 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // initialize the mutex semaphore check if the initialization was successful
-    error_code = sem_init(&mutex_semaphore, 0, 1);
+    // initialize the mutex lock and check if the initialization was successful
+    error_code = pthread_mutex_init(&lock, NULL);
     if (error_code != 0) {
-        printf("Could not initialize mutex semaphore, error code = %d\n", errno);
+        printf("Could not initialize mutex lock, error code = %d\n", error_code);
+        exit(EXIT_FAILURE);
     }
 
     // initialize the full semaphore check if the initialization was successful
     error_code = sem_init(&full_semaphore, 0, 0);
     if (error_code != 0) {
         printf("Could not initialize full semaphore, error code = %d\n", errno);
+        exit(EXIT_FAILURE);
     }
 
     // initialize the empty semaphore check if the initialization was successful
     error_code = sem_init(&empty_semaphore, 0, MAX_BUFFER_SIZE);
     if (error_code != 0) {
         printf("Could not initialize empty semaphore, error code = %d\n", error_code);
+        exit(EXIT_FAILURE);
     }
 
     // initialize the attributes for the producer thread and check if the initialization was successful
@@ -173,33 +181,38 @@ int main() {
     error_code = pthread_attr_destroy(&producer_attr);
     if (error_code != 0) {
         printf("Could not destroy producer thread attributes, error code = %d\n", error_code);
+        exit(EXIT_FAILURE);
     }
 
     // destroy the attributes for the consumer thread and check if it was successful
     error_code = pthread_attr_destroy(&consumer_attr);
     if (error_code != 0) {
         printf("Could not destroy consumer thread attributes, error code = %d\n", error_code);
+        exit(EXIT_FAILURE);
     }
 
     // deallocate the memory allocated for the buffer
     free(buffer);
 
-    // destroy the mutex semaphore and check if the destruction was successful
-    error_code = sem_destroy(&mutex_semaphore);
+    // destroy the mutex and check if the destruction was successful
+    error_code = pthread_mutex_destroy(&lock);
     if (error_code != 0) {
-        printf("Could not destroy mutex semaphore, error code = %d", errno);
+        printf("Could not destroy mutex lock, error code = %d", error_code);
+        exit(EXIT_FAILURE);
     }
 
     // destroy the full semaphore and check if the destruction was successful
     error_code = sem_destroy(&full_semaphore);
     if (error_code != 0) {
         printf("Could not destroy mutex semaphore, error code = %d", errno);
+        exit(EXIT_FAILURE);
     }
 
     // destroy the empty semaphore and check if the destruction was successful
     error_code = sem_destroy(&empty_semaphore);
     if (error_code != 0) {
         printf("Could not destroy mutex semaphore, error code = %d", errno);
+        exit(EXIT_FAILURE);
     }
 
     return 0;
